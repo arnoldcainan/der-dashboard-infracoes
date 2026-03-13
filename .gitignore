@@ -1,0 +1,19 @@
+# Ambientes Virtuais
+.venv/
+venv/
+env/
+
+# Banco de Dados Local
+db.sqlite3
+
+# Arquivos de Cache do Python
+*.pyc
+__pycache__/
+
+# Arquivos CSV
+*.csv
+*.xlsx
+
+# Arquivos de IDE (PyCharm, VS Code)
+.idea/
+.vscode/

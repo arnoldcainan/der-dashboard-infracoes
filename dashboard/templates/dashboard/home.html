@@ -1,0 +1,21 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Início - Sistema DER{% endblock %}
+
+{% block content %}
+<div class="container py-5 mt-4">
+    <div class="p-5 mb-4 bg-white rounded-3 shadow-sm border card-der-accent">
+        <div class="container-fluid py-5">
+            <h1 class="display-5 fw-bold text-dark">Análise de Infrações</h1>
+            <p class="col-md-8 fs-4 mt-3 text-muted">
+                Bem-vindo ao sistema central de processamento e visualização de dados do <strong class="text-dark">DER-SP</strong>.
+                Aqui você poderá importar grandes volumes de registros (CSV) e analisar métricas através de painéis interativos modernos.
+            </p>
+            <div class="mt-4">
+                <a href="/upload/" class="btn btn-der btn-lg me-2">Ir para Importação (CSV)</a>
+                <a href="/dashboard/" class="btn btn-dark btn-lg">Acessar Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

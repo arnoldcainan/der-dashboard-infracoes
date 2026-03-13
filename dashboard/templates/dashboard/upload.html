@@ -1,0 +1,93 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Upload - Sistema DER{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pt-3">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0 card-der-accent">
+                <div class="card-header bg-dark text-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold">Importar Base de Infrações (CSV)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-muted">Selecione o arquivo CSV gerado anteriormente para popular o banco de dados.</p>
+
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <input class="form-control form-control-lg bg-light" type="file" id="arquivoCsv" accept=".csv">
+                    </div>
+
+                    <button id="btnEnviar" class="btn btn-der btn-lg w-100">
+                        <span id="textoBtn">Enviar Arquivo</span>
+                        <span id="spinnerBtn" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+
+                    <div id="mensagemAlerta" class="alert mt-4 d-none fw-bold" role="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Aquele seu código exato do script do upload.html entra aqui!
+    // (Pode copiar e colar aquele listener do btnEnviar aqui dentro)
+    document.getElementById('btnEnviar').addEventListener('click', async function() {
+        const inputArquivo = document.getElementById('arquivoCsv');
+        const alerta = document.getElementById('mensagemAlerta');
+        const btn = document.getElementById('btnEnviar');
+        const textoBtn = document.getElementById('textoBtn');
+        const spinnerBtn = document.getElementById('spinnerBtn');
+
+        if (inputArquivo.files.length === 0) {
+            mostrarAlerta('Por favor, selecione um arquivo CSV primeiro.', 'alert-warning');
+            return;
+        }
+
+        const arquivo = inputArquivo.files[0];
+        const formData = new FormData();
+        formData.append('file', arquivo);
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        btn.disabled = true;
+        textoBtn.innerText = 'Processando... (Isso pode demorar alguns minutos) ';
+        spinnerBtn.classList.remove('d-none');
+        alerta.classList.add('d-none');
+
+        try {
+            const resposta = await fetch('/api/importar/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData
+            });
+
+            const dados = await resposta.json();
+
+            if (resposta.ok) {
+                mostrarAlerta(dados.mensagem, 'alert-success');
+                inputArquivo.value = '';
+            } else {
+                mostrarAlerta('Erro: ' + (dados.erro || 'Falha ao processar o arquivo.'), 'alert-danger');
+            }
+        } catch (erro) {
+            mostrarAlerta('Erro de conexão com o servidor.', 'alert-danger');
+        } finally {
+            btn.disabled = false;
+            textoBtn.innerText = 'Enviar Arquivo';
+            spinnerBtn.classList.add('d-none');
+        }
+    });
+
+    function mostrarAlerta(mensagem, classe) {
+        const alerta = document.getElementById('mensagemAlerta');
+        alerta.className = `alert mt-4 ${classe}`;
+        alerta.innerText = mensagem;
+        alerta.classList.remove('d-none');
+    }
+</script>
+{% endblock %}

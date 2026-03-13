@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema DER{% endblock %}</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    {% block extra_head %}{% endblock %}
+
+    <style>
+        /* Variáveis da Identidade Visual DER */
+        :root {
+            --der-yellow: #FEDD00;
+            --der-yellow-hover: #E5C700;
+            --der-dark: #212529;
+        }
+
+        body {
+            padding-top: 76px;
+            background-color: #f4f6f9;
+            min-height: 100vh;
+        }
+
+        /* Navbar com a linha amarela viária */
+        .navbar-der {
+            background-color: var(--der-dark);
+            border-bottom: 5px solid var(--der-yellow);
+        }
+
+        /* Botão Customizado com a cor da marca */
+        .btn-der {
+            background-color: var(--der-yellow);
+            color: var(--der-dark);
+            border: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+        .btn-der:hover {
+            background-color: var(--der-yellow-hover);
+            color: var(--der-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Detalhes nos Cards */
+        .card-der-accent {
+            border-top: 4px solid var(--der-yellow);
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-der fixed-top shadow">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand d-flex align-items-center" href="/">
+            <img src="{% static 'img/der_logo.png' %}" alt="Logo DER" height="40" class="me-3 bg-white p-1 rounded">
+            <span class="fw-bold tracking-wide">Sistema de Infrações</span>
+        </a>
+        <div class="navbar-nav ms-auto font-weight-bold">
+            <a class="nav-link {% if request.path == '/upload/' %}active text-warning{% endif %}" href="/upload/">Importar CSV</a>
+            <a class="nav-link {% if request.path == '/dashboard/' %}active text-warning{% endif %}" href="/dashboard/">Dashboard</a>
+        </div>
+    </div>
+</nav>
+
+{% block content %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+</body>
+</html>

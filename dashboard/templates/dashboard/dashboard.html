@@ -1,0 +1,237 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Análise - DER</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Variáveis da Identidade Visual DER */
+        :root {
+            --der-yellow: #FEDD00;
+            --der-yellow-hover: #E5C700;
+            --der-dark: #212529;
+        }
+
+        body {
+            padding-top: 76px;
+            background-color: #f4f6f9;
+        }
+
+        /* Navbar com a linha amarela viária */
+        .navbar-der {
+            background-color: var(--der-dark);
+            border-bottom: 5px solid var(--der-yellow);
+        }
+
+        /* Botão Customizado com a cor da marca */
+        .btn-der {
+            background-color: var(--der-yellow);
+            color: var(--der-dark);
+            border: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+        .btn-der:hover {
+            background-color: var(--der-yellow-hover);
+            color: var(--der-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Detalhes nos Cards */
+        .card-der-accent {
+            border-top: 4px solid var(--der-yellow);
+        }
+
+        /* KPIs Originais */
+        .kpi-card { border-left: 5px solid; }
+        .border-primary { border-left-color: #0d6efd !important; }
+        .border-success { border-left-color: #198754 !important; }
+        .border-danger { border-left-color: #dc3545 !important; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark navbar-der fixed-top shadow">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand d-flex align-items-center" href="/">
+            <img src="{% static 'img/der_logo.png' %}" alt="Logo DER" height="40" class="me-3 bg-white p-1 rounded">
+            <span class="fw-bold tracking-wide">Sistema de Infrações</span>
+        </a>
+        <div class="navbar-nav ms-auto font-weight-bold">
+            <a class="nav-link" href="/upload/">Importar CSV</a>
+            <a class="nav-link active text-warning" href="/dashboard/">Dashboard</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid px-4 mt-3">
+
+    <div class="card shadow-sm mb-4 border-0 card-der-accent">
+        <div class="card-body py-3">
+            <form id="formFiltro" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label text-muted small mb-1 fw-bold">Data Início</label>
+                    <input type="date" id="dataInicio" class="form-control bg-light">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small mb-1 fw-bold">Data Fim</label>
+                    <input type="date" id="dataFim" class="form-control bg-light">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" id="btnFiltrar" class="btn btn-der w-100">
+                        <span id="textoBtnFiltrar">Atualizar Painel</span>
+                        <span id="spinnerBtnFiltrar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-xl-4 col-md-6 mb-3">
+            <div class="card shadow-sm kpi-card border-primary h-100 py-2 border-0">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total de Infrações</div>
+                    <div class="h3 mb-0 fw-bold text-dark" id="kpiQtd">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-3">
+            <div class="card shadow-sm kpi-card border-success h-100 py-2 border-0">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-success text-uppercase mb-1">Valor Arrecadado</div>
+                    <div class="h3 mb-0 fw-bold text-dark" id="kpiArrecadado">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-3">
+            <div class="card shadow-sm kpi-card border-danger h-100 py-2 border-0">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-danger text-uppercase mb-1">Déficit (Não Arrecadado)</div>
+                    <div class="h3 mb-0 fw-bold text-dark" id="kpiPendente">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4 border-0 card-der-accent">
+        <div class="card-header bg-white py-3 border-0">
+            <h6 class="m-0 fw-bold text-dark">Análise Financeira x Volume (<span class="text-warning">DER-SP</span>)</h6>
+        </div>
+        <div class="card-body pt-0">
+            <div style="height: 50vh;">
+                <canvas id="meuGrafico"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    let chartInstance = null; // Variável para guardar o gráfico e podermos recriá-lo ao filtrar
+
+    // Formatador de Moeda (R$)
+    const formatarMoeda = (valor) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+    };
+
+    const carregarDashboard = async (dataInicio = '', dataFim = '') => {
+        // Mapeia os elementos do botão
+        const btn = document.getElementById('btnFiltrar');
+        const textoBtn = document.getElementById('textoBtnFiltrar');
+        const spinner = document.getElementById('spinnerBtnFiltrar');
+
+        // 1. Ativa o estado de "Carregando"
+        if (btn) btn.disabled = true;
+        if (textoBtn) textoBtn.innerText = 'Processando...';
+        if (spinner) spinner.classList.remove('d-none');
+
+        try {
+            const url = `/api/grafico/?data_inicio=${dataInicio}&data_fim=${dataFim}`;
+            const resposta = await fetch(url);
+            const json = await resposta.json();
+
+            document.getElementById('kpiQtd').innerText = json.kpis.total_infracoes.toLocaleString('pt-BR');
+            document.getElementById('kpiArrecadado').innerText = formatarMoeda(json.kpis.total_arrecadado);
+            document.getElementById('kpiPendente').innerText = formatarMoeda(json.kpis.valor_pendente_total);
+
+            if (chartInstance) { chartInstance.destroy(); }
+
+            const ctx = document.getElementById('meuGrafico').getContext('2d');
+
+            // Reconstrução do Chart.js
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: json.grafico.labels,
+                    datasets: [
+                        {
+                            label: 'Valor Não Arrecadado (R$)',
+                            data: json.grafico.valores_pendentes,
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            yAxisID: 'yDinheiro',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Volume de Infrações (Qtd)',
+                            data: json.grafico.valores_qtd,
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            yAxisID: 'yQtd',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        yDinheiro: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            ticks: { callback: function(value) { return 'R$ ' + value; } }
+                        },
+                        yQtd: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        } catch (erro) {
+            console.error("Erro ao carregar os dados:", erro);
+        } finally {
+            // 2. Desativa o estado de "Carregando" independentemente de sucesso ou erro
+            if (btn) btn.disabled = false;
+            if (textoBtn) textoBtn.innerText = 'Atualizar Painel';
+            if (spinner) spinner.classList.add('d-none');
+        }
+    };
+
+    // Ação do Botão Filtrar
+    document.getElementById('formFiltro').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const ini = document.getElementById('dataInicio').value;
+        const fim = document.getElementById('dataFim').value;
+        carregarDashboard(ini, fim);
+    });
+
+    // Carrega tudo ao abrir a página
+    document.addEventListener("DOMContentLoaded", () => carregarDashboard());
+</script>
+
+</body>
+</html>
