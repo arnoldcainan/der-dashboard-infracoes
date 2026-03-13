@@ -8,7 +8,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Variáveis da Identidade Visual DER */
         :root {
             --der-yellow: #FEDD00;
             --der-yellow-hover: #E5C700;
@@ -19,14 +18,10 @@
             padding-top: 76px;
             background-color: #f4f6f9;
         }
-
-        /* Navbar com a linha amarela viária */
         .navbar-der {
             background-color: var(--der-dark);
             border-bottom: 5px solid var(--der-yellow);
         }
-
-        /* Botão Customizado com a cor da marca */
         .btn-der {
             background-color: var(--der-yellow);
             color: var(--der-dark);
@@ -40,13 +35,9 @@
             transform: translateY(-1px);
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-
-        /* Detalhes nos Cards */
         .card-der-accent {
             border-top: 4px solid var(--der-yellow);
         }
-
-        /* KPIs Originais */
         .kpi-card { border-left: 5px solid; }
         .border-primary { border-left-color: #0d6efd !important; }
         .border-success { border-left-color: #198754 !important; }
@@ -81,10 +72,15 @@
                     <label class="form-label text-muted small mb-1 fw-bold">Data Fim</label>
                     <input type="date" id="dataFim" class="form-control bg-light">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <button type="submit" id="btnFiltrar" class="btn btn-der w-100">
                         <span id="textoBtnFiltrar">Atualizar Painel</span>
                         <span id="spinnerBtnFiltrar" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" id="btnExportar" class="btn btn-dark w-100 fw-bold">
+                        ⬇️ Exportar CSV (Descontos)
                     </button>
                 </div>
             </form>
@@ -132,20 +128,15 @@
 </div>
 
 <script>
-    let chartInstance = null; // Variável para guardar o gráfico e podermos recriá-lo ao filtrar
-
-    // Formatador de Moeda (R$)
+    let chartInstance = null;
     const formatarMoeda = (valor) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     };
 
     const carregarDashboard = async (dataInicio = '', dataFim = '') => {
-        // Mapeia os elementos do botão
         const btn = document.getElementById('btnFiltrar');
         const textoBtn = document.getElementById('textoBtnFiltrar');
         const spinner = document.getElementById('spinnerBtnFiltrar');
-
-        // 1. Ativa o estado de "Carregando"
         if (btn) btn.disabled = true;
         if (textoBtn) textoBtn.innerText = 'Processando...';
         if (spinner) spinner.classList.remove('d-none');
@@ -154,16 +145,11 @@
             const url = `/api/grafico/?data_inicio=${dataInicio}&data_fim=${dataFim}`;
             const resposta = await fetch(url);
             const json = await resposta.json();
-
             document.getElementById('kpiQtd').innerText = json.kpis.total_infracoes.toLocaleString('pt-BR');
             document.getElementById('kpiArrecadado').innerText = formatarMoeda(json.kpis.total_arrecadado);
             document.getElementById('kpiPendente').innerText = formatarMoeda(json.kpis.valor_pendente_total);
-
             if (chartInstance) { chartInstance.destroy(); }
-
             const ctx = document.getElementById('meuGrafico').getContext('2d');
-
-            // Reconstrução do Chart.js
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -214,22 +200,23 @@
         } catch (erro) {
             console.error("Erro ao carregar os dados:", erro);
         } finally {
-            // 2. Desativa o estado de "Carregando" independentemente de sucesso ou erro
             if (btn) btn.disabled = false;
             if (textoBtn) textoBtn.innerText = 'Atualizar Painel';
             if (spinner) spinner.classList.add('d-none');
         }
     };
 
-    // Ação do Botão Filtrar
     document.getElementById('formFiltro').addEventListener('submit', function(e) {
         e.preventDefault();
         const ini = document.getElementById('dataInicio').value;
         const fim = document.getElementById('dataFim').value;
         carregarDashboard(ini, fim);
     });
-
-    // Carrega tudo ao abrir a página
+    document.getElementById('btnExportar').addEventListener('click', function() {
+        const ini = document.getElementById('dataInicio').value;
+        const fim = document.getElementById('dataFim').value;
+        window.location.href = `/api/exportar/?data_inicio=${ini}&data_fim=${fim}`;
+    });
     document.addEventListener("DOMContentLoaded", () => carregarDashboard());
 </script>
 

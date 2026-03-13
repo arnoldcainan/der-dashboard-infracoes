@@ -1,19 +1,9 @@
-import csv
-import io
-from datetime import datetime
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser
-from rest_framework import status
-from django.db import transaction
-from .models import Infracao
 
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.db.models import Count
 from django.db.models.functions import TruncMonth
 from django.db.models import Count, Sum, F
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
@@ -22,8 +12,7 @@ from django.db import transaction
 import csv
 import io
 from datetime import datetime
-from .models import Infracao, ArquivoImportado  # <-- Não esqueça de importar aqui
-
+from .models import Infracao, ArquivoImportado
 
 class ImportarCSVView(APIView):
     parser_classes = [MultiPartParser]
@@ -89,7 +78,6 @@ class ImportarCSVView(APIView):
                     Infracao.objects.bulk_create(lote, ignore_conflicts=True)
                     linhas_processadas += len(lote)
 
-                # SE DEU TUDO CERTO, REGISTRA O NOME DO ARQUIVO NO HISTÓRICO
                 ArquivoImportado.objects.create(nome_arquivo=nome_do_arquivo)
 
             return Response(
@@ -115,7 +103,6 @@ def pagina_dashboard(request):
 
 def api_dados_grafico(request):
     """API que retorna os dados formatados para o Chart.js"""
-    # O banco de dados agrupa tudo por mês e conta o total
     dados = (
         Infracao.objects
         .annotate(mes=TruncMonth('data_infracao'))
@@ -128,8 +115,7 @@ def api_dados_grafico(request):
     valores = []
 
     for item in dados:
-        if item['mes']:  # Ignora registros com data nula, se houver
-            # Formata a data para MM/YYYY
+        if item['mes']:
             labels.append(item['mes'].strftime('%m/%Y'))
             valores.append(item['total'])
 
@@ -138,8 +124,6 @@ def api_dados_grafico(request):
 def api_dados_grafico(request):
     """API que retorna os dados filtrados e os KPIs financeiros."""
     queryset = Infracao.objects.all()
-
-    # 1. Aplica os filtros de data (se o usuário enviou)
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
@@ -148,15 +132,12 @@ def api_dados_grafico(request):
     if data_fim:
         queryset = queryset.filter(data_infracao__lte=data_fim)
 
-    # 2. Calcula os KPIs Globais do período filtrado
-    # F('valor_infracao') - F('valor_pago') calcula exatamente o que não foi arrecadado linha a linha
     totais = queryset.aggregate(
         total_infracoes=Count('id'),
         total_arrecadado=Sum('valor_pago'),
         valor_pendente_total=Sum(F('valor_infracao') - F('valor_pago'))
     )
 
-    # 3. Prepara os dados do Gráfico (Evolução mensal)
     dados_mensais = (
         queryset
         .annotate(mes=TruncMonth('data_infracao'))
@@ -191,3 +172,47 @@ def api_dados_grafico(request):
             'valores_pendentes': valores_pendentes
         }
     })
+
+
+
+def exportar_csv_pagamentos(request):
+    """Gera um CSV em tempo real com os pagamentos e % de desconto"""
+
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+    queryset = Infracao.objects.filter(valor_pago__gt=0)
+
+    if data_inicio:
+        queryset = queryset.filter(data_infracao__gte=data_inicio)
+    if data_fim:
+        queryset = queryset.filter(data_infracao__lte=data_fim)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="relatorio_descontos_der.csv"'
+    response.write('\ufeff'.encode('utf8'))
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(
+        ['AIT', 'Placa', 'Data Infracao', 'Codigo', 'Valor Infracao (R$)', 'Valor Pago (R$)', 'Desconto (%)'])
+
+    for inf in queryset.iterator():
+        desconto_pct = 0
+        if inf.valor_infracao > 0:
+            desconto_pct = ((inf.valor_infracao - inf.valor_pago) / inf.valor_infracao) * 100
+
+        v_infracao = f"{inf.valor_infracao:.2f}".replace('.', ',')
+        v_pago = f"{inf.valor_pago:.2f}".replace('.', ',')
+        pct_formatado = f"{desconto_pct:.2f}".replace('.', ',')
+
+        data_formatada = inf.data_infracao.strftime('%d/%m/%Y') if inf.data_infracao else ''
+
+        writer.writerow([
+            inf.ait,
+            inf.placa,
+            data_formatada,
+            inf.codigo,
+            v_infracao,
+            v_pago,
+            pct_formatado
+        ])
+
+    return response

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ImportarCSVView, pagina_upload, pagina_home, pagina_dashboard, api_dados_grafico
+from .views import ImportarCSVView, pagina_upload, pagina_home, pagina_dashboard, api_dados_grafico,exportar_csv_pagamentos
 
 urlpatterns = [
     # Quando acessar "/", cai na Home
@@ -13,4 +13,5 @@ urlpatterns = [
 
     # A rota invisível da API que recebe os dados do form
     path('api/importar/', ImportarCSVView.as_view(), name='importar_csv'),
+    path('api/exportar/', exportar_csv_pagamentos, name='exportar_csv_pagamentos'),
 ]
