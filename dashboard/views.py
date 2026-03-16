@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.db.models.functions import TruncMonth
-from django.db.models import Count, Sum, F
+from django.db.models import Count, Sum, F, Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
@@ -13,6 +13,8 @@ import csv
 import io
 from datetime import datetime
 from .models import Infracao, ArquivoImportado
+
+
 
 class ImportarCSVView(APIView):
     parser_classes = [MultiPartParser]
@@ -102,28 +104,10 @@ def pagina_dashboard(request):
 
 
 def api_dados_grafico(request):
-    """API que retorna os dados formatados para o Chart.js"""
-    dados = (
-        Infracao.objects
-        .annotate(mes=TruncMonth('data_infracao'))
-        .values('mes')
-        .annotate(total=Count('id'))
-        .order_by('mes')
-    )
-
-    labels = []
-    valores = []
-
-    for item in dados:
-        if item['mes']:
-            labels.append(item['mes'].strftime('%m/%Y'))
-            valores.append(item['total'])
-
-    return JsonResponse({'labels': labels, 'valores': valores})
-
-def api_dados_grafico(request):
-    """API que retorna os dados filtrados e os KPIs financeiros."""
+    """API que retorna os dados filtrados, KPIs financeiros e Funil de Auditoria."""
     queryset = Infracao.objects.all()
+
+    # 1. Filtros de Data
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
 
@@ -132,12 +116,17 @@ def api_dados_grafico(request):
     if data_fim:
         queryset = queryset.filter(data_infracao__lte=data_fim)
 
+    # 2. Cálculos dos KPIs (Financeiro + Auditoria)
     totais = queryset.aggregate(
         total_infracoes=Count('id'),
         total_arrecadado=Sum('valor_pago'),
-        valor_pendente_total=Sum(F('valor_infracao') - F('valor_pago'))
+        valor_pendente_total=Sum(F('valor_infracao') - F('valor_pago')),
+        # KPIs de Auditoria (Funil)
+        total_na=Count('id', filter=Q(data_na__isnull=False)),
+        total_np=Count('id', filter=Q(data_np__isnull=False))
     )
 
+    # 3. Dados do Gráfico de Evolução
     dados_mensais = (
         queryset
         .annotate(mes=TruncMonth('data_infracao'))
@@ -157,14 +146,16 @@ def api_dados_grafico(request):
         if item['mes']:
             labels.append(item['mes'].strftime('%m/%Y'))
             valores_qtd.append(item['total_qtd'])
-            # Converte Decimal para float para não quebrar o JSON
             valores_pendentes.append(float(item['pendente_mes'] or 0))
 
+    # 4. Retorno do JSON consolidado
     return JsonResponse({
         'kpis': {
             'total_infracoes': totais['total_infracoes'] or 0,
             'total_arrecadado': float(totais['total_arrecadado'] or 0),
-            'valor_pendente_total': float(totais['valor_pendente_total'] or 0)
+            'valor_pendente_total': float(totais['valor_pendente_total'] or 0),
+            'total_na': totais['total_na'] or 0,
+            'total_np': totais['total_np'] or 0
         },
         'grafico': {
             'labels': labels,

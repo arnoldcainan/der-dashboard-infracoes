@@ -114,6 +114,38 @@
         </div>
     </div>
 
+    <h6 class="m-0 fw-bold text-dark mb-3 mt-4 border-bottom pb-2">Auditoria de Processamento (Funil legal)</h6>
+    <div class="row mb-4">
+        <div class="col-xl-4 col-md-6 mb-3">
+            <div class="card shadow-sm border-secondary h-100 py-2 border-0" style="border-left: 5px solid #6c757d !important;">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-secondary text-uppercase mb-1">AITs (Autuações Registradas)</div>
+                    <div class="h3 mb-0 fw-bold text-dark" id="kpiAIT">-</div>
+                    <small class="text-muted">Volume base</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-3">
+            <div class="card shadow-sm border-info h-100 py-2 border-0" style="border-left: 5px solid #0dcaf0 !important;">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-info text-uppercase mb-1">NAs Expedidas (Notif. Autuação)</div>
+                    <div class="h3 mb-0 fw-bold text-dark" id="kpiNA">-</div>
+                    <small class="text-muted fw-bold" id="pctNA"></small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6 mb-3">
+            <div class="card shadow-sm border-warning h-100 py-2 border-0" style="border-left: 5px solid #ffc107 !important;">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-warning text-uppercase mb-1">NPs Expedidas (Notif. Penalidade)</div>
+                    <div class="h3 mb-0 fw-bold text-dark" id="kpiNP">-</div>
+                    <small class="text-muted fw-bold" id="pctNP"></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div class="card shadow-sm mb-4 border-0 card-der-accent">
         <div class="card-header bg-white py-3 border-0">
             <h6 class="m-0 fw-bold text-dark">Análise Financeira x Volume (<span class="text-warning">DER-SP</span>)</h6>
@@ -148,6 +180,27 @@
             document.getElementById('kpiQtd').innerText = json.kpis.total_infracoes.toLocaleString('pt-BR');
             document.getElementById('kpiArrecadado').innerText = formatarMoeda(json.kpis.total_arrecadado);
             document.getElementById('kpiPendente').innerText = formatarMoeda(json.kpis.valor_pendente_total);
+
+            // NOVOS CÓDIGOS - Auditoria AIT > NA > NP
+            let totalAIT = json.kpis.total_infracoes;
+            let totalNA = json.kpis.total_na;
+            let totalNP = json.kpis.total_np;
+
+            document.getElementById('kpiAIT').innerText = totalAIT.toLocaleString('pt-BR');
+            document.getElementById('kpiNA').innerText = totalNA.toLocaleString('pt-BR');
+            document.getElementById('kpiNP').innerText = totalNP.toLocaleString('pt-BR');
+
+            // Calcula e exibe as porcentagens de quebra do funil
+            let pctNa = totalAIT > 0 ? ((totalNA / totalAIT) * 100).toFixed(1) : 0;
+            let pctNp = totalNA > 0 ? ((totalNP / totalNA) * 100).toFixed(1) : 0;
+
+            // Se der 100% fica verde, se der menos fica vermelho de alerta
+            document.getElementById('pctNA').innerText = `↳ ${pctNa}% das AITs viraram NA`;
+            document.getElementById('pctNA').className = pctNa >= 99 ? 'text-success fw-bold' : 'text-danger fw-bold';
+
+            document.getElementById('pctNP').innerText = `↳ ${pctNp}% das NAs viraram NP`;
+
+
             if (chartInstance) { chartInstance.destroy(); }
             const ctx = document.getElementById('meuGrafico').getContext('2d');
             chartInstance = new Chart(ctx, {
