@@ -12,8 +12,9 @@
                 Aqui você poderá importar grandes volumes de registros (CSV) e analisar métricas através de painéis interativos modernos.
             </p>
             <div class="mt-4">
-                <a href="/upload/" class="btn btn-der btn-lg me-2">Ir para Importação (CSV)</a>
-                <a href="/dashboard/" class="btn btn-dark btn-lg">Acessar Dashboard</a>
+                <a href="{% url 'pagina_upload_infracoes' %}" class="btn btn-der btn-lg me-2">▶️ Importar Infrações (CSV)</a>
+                <a href="{% url 'pagina_upload_enquadramento' %}" class="btn btn-outline-secondary btn-lg me-2">⚙️ Importar Enquadramentos</a>
+                <a href="{% url 'pagina_dashboard' %}" class="btn btn-dark btn-lg">📊 Acessar Dashboard</a>
             </div>
         </div>
     </div>

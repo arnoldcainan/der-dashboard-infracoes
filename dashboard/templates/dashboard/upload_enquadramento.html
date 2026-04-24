@@ -1,0 +1,64 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Importar Enquadramentos - DER{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm card-der-accent border-0">
+                <div class="card-body p-5">
+                    <h2 class="card-title text-center mb-4 fw-bold">Importar CSV de Enquadramentos</h2>
+                    <p class="text-muted text-center">Envie o arquivo CSV com os detalhes de cada enquadramento, incluindo seu período de validade. O sistema irá criar novos registros ou atualizar os existentes.</p>
+                    <p class="text-center small text-danger fw-bold">
+                        <strong>Atenção:</strong> O arquivo deve ser separado por <strong>TAB</strong> e ter um cabeçalho como: <br>
+                        <code class="text-dark">codigo	portaria	data_inicio	data_final	descricao	infrator	competencia	valor	pontos</code>
+                    </p>
+                    <form id="formUpload" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <input class="form-control form-control-lg" type="file" id="arquivoCSV" name="file" accept=".csv,.tsv,text/csv,text/tab-separated-values" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-der btn-lg">
+                                <span id="btnTexto">Enviar Arquivo</span>
+                                <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </form>
+                    <div id="divAlerta" class="mt-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('formUpload').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const btnTexto = document.getElementById('btnTexto');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const divAlerta = document.getElementById('divAlerta');
+
+    btnTexto.classList.add('d-none');
+    btnSpinner.classList.remove('d-none');
+    divAlerta.innerHTML = '';
+
+    try {
+        const response = await fetch("{% url 'importar_csv_enquadramento' %}", { method: 'POST', body: formData });
+        const result = await response.json();
+        const alertClass = response.ok ? 'alert-success' : 'alert-danger';
+        divAlerta.innerHTML = `<div class="alert ${alertClass}">${result.mensagem || result.erro}</div>`;
+    } catch (error) {
+        divAlerta.innerHTML = `<div class="alert alert-danger">Ocorreu um erro de rede. Tente novamente.</div>`;
+    } finally {
+        btnTexto.classList.remove('d-none');
+        btnSpinner.classList.add('d-none');
+        form.reset();
+    }
+});
+</script>
+{% endblock %}

@@ -11,7 +11,10 @@
                     <h5 class="mb-0 fw-bold">Importar Base de Infrações (CSV)</h5>
                 </div>
                 <div class="card-body p-4">
-                    <p class="text-muted">Selecione o arquivo CSV gerado anteriormente para popular o banco de dados.</p>
+                    <p class="text-muted">Selecione o arquivo de infrações para popular o banco de dados.</p>
+                    <p class="text-center small text-danger fw-bold">
+                        <strong>Atenção:</strong> O arquivo deve ser separado por <strong>ponto e vírgula (;)</strong> e ter o cabeçalho: <br><code class="text-dark">AIT;PLACA;VALORINFRAC;VALORPAGO;DTINFRAC;DATANA;DATANP;CODIGO</code>
+                    </p> 
 
                     {% csrf_token %}
 
@@ -58,7 +61,7 @@
         alerta.classList.add('d-none');
 
         try {
-            const resposta = await fetch('/api/importar/', {
+            const resposta = await fetch("{% url 'importar_csv_infracoes' %}", {
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrfToken },
                 body: formData
